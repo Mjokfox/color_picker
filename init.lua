@@ -1,6 +1,4 @@
 local color_picker = {}
-local width = 64
-local height = 64;
 local saturation = 0;
 local mapping_type_index = "2"
 local dropdown_index = "3"
@@ -9,6 +7,24 @@ local fs = {}
 
 local modpath = minetest.get_modpath(minetest.get_current_modname())
 dofile(modpath.."/converters.lua")
+
+local width = minetest.settings:get("map_size")
+
+if (width == nil) then
+	width = 64
+	minetest.settings:set("map_size",64)
+end
+
+local height = width
+
+-- helper function
+local function TableConcat(t1,t2)
+    for i=1,#t2 do
+        t1[#t1+1] = t2[i]
+    end
+    return t1
+end
+
 
 -- color sliders 
 local function assemble_sliders(x,y,w,h)
@@ -40,7 +56,7 @@ local function assemble_sliders(x,y,w,h)
 	end end end
 	local hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
 	-- preview color
-	buf[#buf + 1] = "label[".. x + w/3 ..",".. y + h/1.5 ..";click me!]"
+	buf[#buf + 1] = "label[".. x + (width*(12.8/(width + height)))/2 - string.len("click me!")/15 ..",".. y + 0.5 ..";click me!]"
 	y=y+h
 	buf[#buf + 1] = "item_image_button[".. x..",".. y ..";"..w..","..3*h..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
 
@@ -64,20 +80,18 @@ end
 -- color map
 local function Assemble_Map(x_off,y_off)
 	local buf = {}
-	buf[#buf + 1] = "label[".. x_off + 2 ..",".. y_off + 0.5 ..";click any color!]"
+	local size = 12.8/(width + height)
+	buf[#buf + 1] = "label[".. x_off + (width*size)/2 - string.len("click any color!")/15 ..",".. y_off + 0.5 ..";click any color!]"
 	local label = "saturation"
-	if (dropdown_index == "4") then label = "chroma" end
-	if (dropdown_index ~= "1") then
-		buf[#buf + 1] = "label[".. x_off + 6.6 ..",".. y_off + 0.5 ..";".. label .."]"
-		y_off=y_off+1
-		-- saturation slider
-		buf[#buf + 1] = "scrollbaroptions[min=0;max=10;smallstep=1;largestep=3]"
-		buf[#buf + 1] = "scrollbar[".. x_off + 7 ..",".. y_off ..";1,6.4;vertical;saturation;".. saturation .."]"
-	else
-		y_off=y_off+1
-	end
+	if (dropdown_index == "4") then label = "chroma " end
+	if (dropdown_index == "1") then label = "red" end
+	buf[#buf + 1] = "label[".. x_off + 7.5 - string.len(label)/15 ..",".. y_off + 0.5 ..";".. label .."]"
+	y_off=y_off+1
+	-- saturation slider
+	buf[#buf + 1] = "scrollbaroptions[min=0;max=10;smallstep=1;largestep=3]"
+	buf[#buf + 1] = "scrollbar[".. x_off + 7 ..",".. y_off ..";1,6.4;vertical;saturation;".. saturation .."]"
 	-- full map
-	local size = 0.1
+	
 	local size_increase = 1.5
 	local y_axis,x_axis = "lightness","hue"
 	local hexr,hexg,hexb
@@ -85,66 +99,73 @@ local function Assemble_Map(x_off,y_off)
 	local temp_width = 1;
 	local old_x = 0;
 	local map_optimization = true;
-	for y = 0,height-1 do
-		for x = 0,width-1 do
-			-- set r,g,b using the selected mapping method
-			local r,g,b = 0,0,0;
-			if (dropdown_index == "2") then
-				y_axis,x_axis = "value","hue"
-				r,g,b = hsv_to_rgb(x / width,1-saturation/10,(height-y) / height)
-			else if (dropdown_index == "3") then
-				r,g,b = hsl_to_rgb(x / width,1-saturation/10,(height-y) / height)
-			else if (dropdown_index == "4") then
-				y_axis = "p lightness"
-				r,g,b = lch_to_rgb((height-y) / height, 1-saturation/10, 360*(x / width))
-			else
-				y_axis,x_axis = "",""
-				r,g,b = math.floor(x/(width/4))+math.floor(y/(width/4))*(width/16),y%16,x%16
-			end end end
-			
-			hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
-			if (x==0) then
-				ohexr,ohexg,ohexb = hexr,hexg,hexb
+	if (dropdown_index == "1") then
+		local temp_size = 0.4
+		local r,g,b
+		for y = 0,15 do
+			for x = 0,15 do
+				r,g,b = (1-saturation/10)*15,y%16,x%16
+				hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
+				buf[#buf + 1] = "item_image_button[".. x*temp_size + x_off ..",".. y*temp_size + y_off ..";"..(temp_size*size_increase)..","..(temp_size*size_increase)..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
 			end
-
-			if (map_optimization) then
-				if (ohexr == hexr and ohexg == hexg and ohexb == hexb) then
-					temp_width = temp_width + 1
-					if (temp_width == 2) then old_x = x end
-				else
-					-- use hexcol mod to display the buttons as their blocks
-					if temp_width == 1 then
-						old_x = x
-					end
-					buf[#buf + 1] = "item_image_button[".. old_x*size + x_off ..",".. y*size + y_off ..";"..size*(temp_width-1+size_increase)..","..(size*size_increase)..";hexcol:".. ohexr .. ohexg .. ohexb ..";hexcol:".. ohexr .. ohexg .. ohexb ..";]"
-					temp_width = 1
-					old_x = x;
-				end
-				ohexr,ohexg,ohexb = hexr,hexg,hexb
-			else
-				buf[#buf + 1] = "item_image_button[".. x*size + x_off ..",".. y*size + y_off ..";"..(size*size_increase)..","..(size*size_increase)..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
-			end
-			
 		end
-		if (map_optimization) then
-			if (temp_width>1) then
-				buf[#buf + 1] = "item_image_button[".. old_x*size + x_off ..",".. y*size + y_off ..";"..(size)*(temp_width-2+size_increase)..","..(size*size_increase)..";hexcol:".. ohexr .. ohexg .. ohexb ..";hexcol:".. ohexr .. ohexg .. ohexb ..";]"
-				temp_width = 1;
+		y_axis,x_axis = "green","blue"
+	else
+		for y = 0,height-1 do
+			for x = 0,width-1 do
+				-- set r,g,b using the selected mapping method
+				local r,g,b = 0,0,0;
+				if (dropdown_index == "2") then
+					y_axis,x_axis = "value","hue"
+					r,g,b = hsv_to_rgb(x / width,1-saturation/10,(height-y) / height)
+				else if (dropdown_index == "3") then
+					r,g,b = hsl_to_rgb(x / width,1-saturation/10,(height-y) / height)
+				else if (dropdown_index == "4") then
+					y_axis = "p lightness"
+					r,g,b = lch_to_rgb((height-y) / height, 1-saturation/10, 360*(x / width))
+				else
+					y_axis = "chroma"
+					-- r,g,b = math.floor(x/(width/4))+math.floor(y/(width/4))*(width/16),y%16,x%16
+					r,g,b = lch_to_rgb(1-saturation/10, (height-y) / height, 360*(x / width))
+				end end end
+				
+				hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
+				if (x==0) then
+					ohexr,ohexg,ohexb = hexr,hexg,hexb
+				end
+
+				if (map_optimization) then
+					if (ohexr == hexr and ohexg == hexg and ohexb == hexb) then
+						temp_width = temp_width + 1
+						if (temp_width == 2) then old_x = x end
+					else
+						-- use hexcol mod to display the buttons as their blocks
+						if temp_width == 1 then
+							old_x = x
+						end
+						buf[#buf + 1] = "item_image_button[".. old_x*size + x_off ..",".. y*size + y_off ..";"..size*(temp_width-1+size_increase)..","..(size*size_increase)..";hexcol:".. ohexr .. ohexg .. ohexb ..";hexcol:".. ohexr .. ohexg .. ohexb ..";]"
+						temp_width = 1
+						old_x = x;
+					end
+					ohexr,ohexg,ohexb = hexr,hexg,hexb
+				else
+					buf[#buf + 1] = "item_image_button[".. x*size + x_off ..",".. y*size + y_off ..";"..(size*size_increase)..","..(size*size_increase)..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
+				end
+				
+			end
+			if (map_optimization) then
+				if (temp_width>1) then
+					buf[#buf + 1] = "item_image_button[".. old_x*size + x_off ..",".. y*size + y_off ..";"..(size)*(temp_width-2+size_increase)..","..(size*size_increase)..";hexcol:".. ohexr .. ohexg .. ohexb ..";hexcol:".. ohexr .. ohexg .. ohexb ..";]"
+					temp_width = 1;
+				end
 			end
 		end
 	end
-	buf[#buf + 1] = "vertlabel[".. x_off-0.3 ..",".. y_off + (height*size)/(string.len(y_axis)/1.3) ..";".. y_axis .."]"
-	buf[#buf + 1] = "label[".. x_off + (width*size)/(string.len(x_axis)/1.3) ..",".. y_off+(height*size)+0.3 ..";".. x_axis .."]"
+	buf[#buf + 1] = "vertlabel[".. x_off-0.3 ..",".. y_off + (height*size)/2 - string.len(y_axis)/7 ..";".. y_axis .."]"
+	buf[#buf + 1] = "label[".. x_off + (width*size)/2 - string.len(x_axis)/15 ..",".. y_off+(height*size)+0.3 ..";".. x_axis .."]"
 	return buf
 end
 
--- helper function
-local function TableConcat(t1,t2)
-    for i=1,#t2 do
-        t1[#t1+1] = t2[i]
-    end
-    return t1
-end
 
 local function assemble_colorspace()
 	-- stuff always in formspec

@@ -1,0 +1,2 @@
+# I recommend not going higher than 128, even 64 is quite heavy. 
+map_size   (the color maps square dimensions)  int 64
