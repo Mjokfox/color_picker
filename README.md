@@ -1,1 +1,1 @@
-Color picker for hexcol minetest mod 
+Color picker for the [hexcol minetest mod](https://gitinthebutt.ofafox.com/Bob/hexcol)
