@@ -98,10 +98,10 @@ local function assemble_sliders(x,y,w,h)
 	-- preview color
 	buf[#buf + 1] = "label[".. x + w/3 ..",".. y + h/1.5 ..";click me!]"
 	y=y+h
-	buf[#buf + 1] = "item_image_button[".. x..",".. y ..";"..w..","..2*h..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
+	buf[#buf + 1] = "item_image_button[".. x..",".. y ..";"..w..","..3*h..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
 
 	-- generate the sliders
-	y=y+h
+	y=y+2*h
 	for i=1,3 do
 		buf[#buf + 1] = "label[".. x-0.4 ..",".. y+(i+0.5)*h ..";".. labels[i] .."]" -- label showing what kind of slider
 		buf[#buf + 1] = "scrollbaroptions[min=0;max=".. maxs[i] ..";smallstep=".. steps[i] .."]" -- options
@@ -127,7 +127,7 @@ local function Assemble_Map(x_off,y_off)
 		y_off=y_off+1
 		-- saturation slider
 		buf[#buf + 1] = "scrollbaroptions[min=0;max=10;smallstep=1;largestep=3]"
-		buf[#buf + 1] = "scrollbar[".. x_off + 7 ..",".. y_off ..";1,6.5;vertical;saturation;".. saturation .."]"
+		buf[#buf + 1] = "scrollbar[".. x_off + 7 ..",".. y_off ..";1,6.4;vertical;saturation;".. saturation .."]"
 	else
 		y_off=y_off+1
 	end
@@ -165,18 +165,19 @@ local function assemble_colorspace()
 	-- stuff always in formspec
 	fs = {
 		"formspec_version[7]",
-		"size[10,9]",
+		"size[10.7,14]",
 		"padding[0.05, 0.05]",
-		"dropdown[1,0.3;2.5,0.6;mapping_type;map,sliders;" .. mapping_type_index ..";true]" ,
-		"dropdown[4,0.3;2.5,0.6;color_space;rgb,hsv,hsl;" .. dropdown_index ..";true]" ,
+		"dropdown[2,0.3;3,0.7;mapping_type;map,sliders;" .. mapping_type_index ..";true]" ,
+		"dropdown[5.5,0.3;3,0.7;color_space;rgb,hsv,hsl;" .. dropdown_index ..";true]" ,
 		"container[1,1]"
 	}
-	local x_off,y_off = 0,0
+	local x_off,y_off = 1,0
 	local fs2 = {}
 	if (mapping_type_index == "1") then fs2 = Assemble_Map(x_off,y_off)
-	else if (mapping_type_index == "2") then fs2 = assemble_sliders(x_off,y_off,6,1) end end
+	else if (mapping_type_index == "2") then fs2 = assemble_sliders(x_off,y_off,6.5,1) end end
 	TableConcat(fs, fs2);
 	fs[#fs+1] = "container_end[]"
+	fs[#fs+1] = "list[current_player;main;0.5,9;8,4]"
 end
 
 -- helper function
