@@ -56,12 +56,16 @@ local function assemble_sliders(x,y,w,h)
 	end end end
 	local hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
 	-- preview color
-	buf[#buf + 1] = "label[".. x + (width*(12.8/(width + height)))/2 - string.len("click me!")/15 ..",".. y + 0.5 ..";click me!]"
-	y=y+h
-	buf[#buf + 1] = "item_image_button[".. x..",".. y ..";"..w..","..3*h..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
+	local label = "click me!"
+	local temp = minetest.formspec_escape(";")
+	if (r==4 and g==2 and b==0) then label = "Nice" 
+	else if (r==6 and g==2 and b==1) then label = temp .."3"
+	else if (r==6 and g==6 and b==6) then label = "Feeling devious today.." 
+	else if (r==7 and g==7 and b==7) then label = "Feeling lucky today.." end end end end
+	buf[#buf + 1] = "item_image_button[".. x..",".. y+h ..";"..w..","..5*h..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";"..label.."]"
 
 	-- generate the sliders
-	y=y+2*h
+	y=y+5*h
 	for i=1,3 do
 		buf[#buf + 1] = "label[".. x-0.4 ..",".. y+(i+0.5)*h ..";".. labels[i] .."]" -- label showing what kind of slider
 		buf[#buf + 1] = "scrollbaroptions[min=0;max=".. maxs[i] ..";smallstep=".. steps[i] .."]" -- options
@@ -88,8 +92,11 @@ local function Assemble_Map(x_off,y_off)
 	buf[#buf + 1] = "label[".. x_off + 7.5 - string.len(label)/15 ..",".. y_off + 0.5 ..";".. label .."]"
 	y_off=y_off+1
 	-- saturation slider
-	buf[#buf + 1] = "scrollbaroptions[min=0;max=10;smallstep=1;largestep=3]"
-	buf[#buf + 1] = "scrollbar[".. x_off + 7 ..",".. y_off ..";1,6.4;vertical;saturation;".. saturation .."]"
+	local max = 10
+	local step = 1;
+	if (dropdown_index == "1") then max = 15; step = 1 end
+	buf[#buf + 1] = "scrollbaroptions[min=0;max=".. max ..";smallstep=".. step ..";thumbsize=1]"
+	buf[#buf + 1] = "scrollbar[".. x_off + 7 ..",".. y_off ..";0.5,6.4;vertical;saturation;".. saturation .."]"
 	-- full map
 	
 	local size_increase = 1.5
@@ -104,7 +111,7 @@ local function Assemble_Map(x_off,y_off)
 		local r,g,b
 		for y = 0,15 do
 			for x = 0,15 do
-				r,g,b = (1-saturation/10)*15,y%16,x%16
+				r,g,b = 15-saturation,y%16,x%16
 				hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
 				buf[#buf + 1] = "item_image_button[".. x*temp_size + x_off ..",".. y*temp_size + y_off ..";"..(temp_size*size_increase)..","..(temp_size*size_increase)..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
 			end
@@ -180,7 +187,7 @@ local function assemble_colorspace()
 	local x_off,y_off = 1,0
 	local fs2 = {}
 	if (mapping_type_index == "1") then fs2 = Assemble_Map(x_off,y_off)
-	else if (mapping_type_index == "2") then fs2 = assemble_sliders(x_off,y_off,6.5,1) end end
+	else if (mapping_type_index == "2") then fs2 = assemble_sliders(x_off,y_off,6.5,0.8) end end
 	TableConcat(fs, fs2);
 	fs[#fs+1] = "container_end[]"
 	fs[#fs+1] = "list[current_player;main;0.5,9;8,4]"
@@ -238,6 +245,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end
 	if (fields.saturation) then
 		saturation = minetest.explode_scrollbar_event(fields.saturation).value
+		if (dropdown_index == "1" and tonumber(saturation) > 15) then
+			saturation = 15;
+		end
 		color_picker.show_formspec(player)
 	end
 	if (fields.mapping_type) then
