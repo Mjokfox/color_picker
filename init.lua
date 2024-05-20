@@ -66,14 +66,14 @@ local function hsv_to_rgb(h, s, v)
     return math.floor(r * max_value), math.floor(g * max_value), math.floor(b * max_value)
 end
 
---magic oklab stuff
+-- magic oklab stuff
 local function lch_to_lab(L, C, h)
     local a = C * math.cos(h * math.pi / 180)
     local b = C * math.sin(h * math.pi / 180)
     return L, a, b
 end
 
---magic oklab stuff
+-- magic oklab stuff
 local function oklab_to_linear_srgb(L, a, b)
     local l_ = (L + 0.3963377774 * a + 0.2158037573 * b) ^ 3
     local m_ = (L - 0.1055613458 * a - 0.0638541728 * b) ^ 3
@@ -86,7 +86,7 @@ local function oklab_to_linear_srgb(L, a, b)
     return r, g, b
 end
 
---magic oklab stuff
+-- magic oklab stuff
 local function linear_to_srgb(x)
     if x <= 0.0031308 then
         return 12.92 * x
@@ -95,7 +95,7 @@ local function linear_to_srgb(x)
     end
 end
 
---magic oklab stuff
+-- magic oklab stuff
 local function lch_to_rgb(L, C, h)
     local r, g, b = oklab_to_linear_srgb(lch_to_lab(L, C, h))
 
@@ -291,10 +291,10 @@ minetest.register_craftitem("color_picker:picker", {
 
 -- register button in inventory
 if unified_inventory then
-	unified_inventory.register_button("hexcol_picker", {
+	unified_inventory.register_button("color_picker:picker", {
 		type = "image",
 		image = "cspace.png",
-		tooltip = "Colour Picker",
+		tooltip = "Color Picker",
 		action = function (player)
             color_picker.show_formspec(player)
 		end,
