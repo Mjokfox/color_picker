@@ -3,7 +3,7 @@ local width = 64
 local height = 64;
 local max_value = 15
 local saturation = 0;
-local mapping_type_index = "1"
+local mapping_type_index = "2"
 local dropdown_index = "3"
 local bars = {"0","100","50"}
 local fs = {}
@@ -66,8 +66,54 @@ local function hsv_to_rgb(h, s, v)
     return math.floor(r * max_value), math.floor(g * max_value), math.floor(b * max_value)
 end
 
+--magic oklab stuff
+local function lch_to_lab(L, C, h)
+    local a = C * math.cos(h * math.pi / 180)
+    local b = C * math.sin(h * math.pi / 180)
+    return L, a, b
+end
+
+--magic oklab stuff
+local function oklab_to_linear_srgb(L, a, b)
+    local l_ = (L + 0.3963377774 * a + 0.2158037573 * b) ^ 3
+    local m_ = (L - 0.1055613458 * a - 0.0638541728 * b) ^ 3
+    local s_ = (L - 0.0894841775 * a - 1.2914855480 * b) ^ 3
+
+    local r = 4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_
+    local g = -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_
+    local b = -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_
+
+    return r, g, b
+end
+
+--magic oklab stuff
+local function linear_to_srgb(x)
+    if x <= 0.0031308 then
+        return 12.92 * x
+    else
+        return 1.055 * x^(1/2.4) - 0.055
+    end
+end
+
+--magic oklab stuff
+local function lch_to_rgb(L, C, h)
+    local r, g, b = oklab_to_linear_srgb(lch_to_lab(L, C, h))
+
+    r = linear_to_srgb(r)
+    g = linear_to_srgb(g)
+    b = linear_to_srgb(b)
+
+    return math.floor(r * max_value), math.floor(g * max_value), math.floor(b * max_value)
+end
+
 -- helper function
 local function toHex(decimal)
+	if (decimal < 0) then
+		decimal = 0
+	end
+	if (decimal > max_value) then
+		decimal = max_value
+	end
     local hex = string.format("%01x", decimal)
     return hex
 end
@@ -87,13 +133,18 @@ local function assemble_sliders(x,y,w,h)
 	else if (dropdown_index == "3") then
 		labels[3] = "L"
 		r,g,b = hsl_to_rgb(bars[1]/360,bars[2]/100,bars[3]/100)
+	else if (dropdown_index == "4") then
+		labels = {"L","C","h"}
+		maxs = {100,100,360}
+		units = {"%%","%%","\u{00B0}"}
+		r,g,b = lch_to_rgb(bars[1]/100,bars[2]/100,bars[3])
 	else
 		labels = {"R","G","B"}
 		units = {"","",""}
 		maxs = {15,15,15}
 		steps = {1,1,1}
 		r,g,b = tonumber(bars[1]),tonumber(bars[2]),tonumber(bars[3])
-	end end
+	end end end
 	local hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
 	-- preview color
 	buf[#buf + 1] = "label[".. x + w/3 ..",".. y + h/1.5 ..";click me!]"
@@ -121,9 +172,10 @@ end
 local function Assemble_Map(x_off,y_off)
 	local buf = {}
 	buf[#buf + 1] = "label[".. x_off + 2 ..",".. y_off + 0.5 ..";click any color!]"
-
+	local label = "saturation"
+	if (dropdown_index == "4") then label = "chroma" end
 	if (dropdown_index ~= "1") then
-		buf[#buf + 1] = "label[".. x_off + 6.6 ..",".. y_off + 0.5 ..";saturation]"
+		buf[#buf + 1] = "label[".. x_off + 6.6 ..",".. y_off + 0.5 ..";".. label .."]"
 		y_off=y_off+1
 		-- saturation slider
 		buf[#buf + 1] = "scrollbaroptions[min=0;max=10;smallstep=1;largestep=3]"
@@ -133,23 +185,62 @@ local function Assemble_Map(x_off,y_off)
 	end
 	-- full map
 	local size = 0.1
-	for x = 0,width-1 do
-		for y = 0,height-1 do
+	local y_axis,x_axis = "lightness","hue"
+	local hexr,hexg,hexb
+	local ohexr,ohexg,ohexb
+	local temp_width = 1;
+	local old_x = 0;
+	local map_optimization = true;
+	for y = 0,height-1 do
+		for x = 0,width-1 do
 			-- set r,g,b using the selected mapping method
 			local r,g,b = 0,0,0;
 			if (dropdown_index == "2") then
+				y_axis,x_axis = "value","hue"
 				r,g,b = hsv_to_rgb(x / width,1-saturation/10,(height-y) / height)
 			else if (dropdown_index == "3") then
 				r,g,b = hsl_to_rgb(x / width,1-saturation/10,(height-y) / height)
+			else if (dropdown_index == "4") then
+				y_axis = "p lightness"
+				r,g,b = lch_to_rgb((height-y) / height, 1-saturation/10, 360*(x / width))
 			else
+				y_axis,x_axis = "",""
 				r,g,b = math.floor(x/(width/4))+math.floor(y/(width/4))*(width/16),y%16,x%16
-			end end
-	
-			local hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
-			-- use hexcol mod to display the buttons as their blocks
-			buf[#buf + 1] = "item_image_button[".. x*size + x_off + 0.0001 ..",".. y*size + y_off + 0.0001 ..";"..size..","..size..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
+			end end end
+			
+			hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
+			if (x==0) then
+				ohexr,ohexg,ohexb = hexr,hexg,hexb
+			end
+
+			if (map_optimization) then
+				if (ohexr == hexr and ohexg == hexg and ohexb == hexb) then
+					temp_width = temp_width + 1
+					if (temp_width == 2) then old_x = x end
+				else
+					-- use hexcol mod to display the buttons as their blocks
+					if temp_width == 1 then
+						old_x = x
+					end
+					buf[#buf + 1] = "item_image_button[".. old_x*size + x_off + 0.0001 ..",".. y*size + y_off + 0.0001 ..";"..size*temp_width..","..size..";hexcol:".. ohexr .. ohexg .. ohexb ..";hexcol:".. ohexr .. ohexg .. ohexb ..";]"
+					temp_width = 1
+					old_x = x;
+				end
+				ohexr,ohexg,ohexb = hexr,hexg,hexb
+			else
+				buf[#buf + 1] = "item_image_button[".. x*size + x_off + 0.0001 ..",".. y*size + y_off + 0.0001 ..";"..size..","..size..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
+			end
+			
+		end
+		if (map_optimization) then
+			if (temp_width>1) then
+				buf[#buf + 1] = "item_image_button[".. old_x*size + x_off + 0.0001 ..",".. y*size + y_off + 0.0001 ..";"..size*(temp_width-1)..","..size..";hexcol:".. ohexr .. ohexg .. ohexb ..";hexcol:".. ohexr .. ohexg .. ohexb ..";]"
+				temp_width = 1;
+			end
 		end
 	end
+	buf[#buf + 1] = "vertlabel[".. x_off-0.3 ..",".. y_off + (height*size)/(string.len(y_axis)/1.3) ..";".. y_axis .."]"
+	buf[#buf + 1] = "label[".. x_off + (width*size)/(string.len(x_axis)/1.3) ..",".. y_off+(height*size)+0.3 ..";".. x_axis .."]"
 	return buf
 end
 
@@ -168,7 +259,7 @@ local function assemble_colorspace()
 		"size[10.7,14]",
 		"padding[0.05, 0.05]",
 		"dropdown[2,0.3;3,0.7;mapping_type;map,sliders;" .. mapping_type_index ..";true]" ,
-		"dropdown[5.5,0.3;3,0.7;color_space;rgb,hsv,hsl;" .. dropdown_index ..";true]" ,
+		"dropdown[5.5,0.3;3,0.7;color_space;rgb,hsv,hsl,Oklab;" .. dropdown_index ..";true]" ,
 		"container[1,1]"
 	}
 	local x_off,y_off = 1,0
