@@ -1,5 +1,4 @@
 local color_picker = {}
-local size = 0.1
 local width = 64
 local height = 64;
 local max_value = 15
@@ -77,7 +76,7 @@ end
 local function assemble_sliders(x,y,w,h)
 	-- labels
 	local buf = {}
-	local r,g,b = 0,0,0;
+	local r,g,b
 	local labels = {"H","S","V"}
 	local units = {"\u{00B0}","%%","%%"}
 	local maxs = {360,100,100}
@@ -93,11 +92,9 @@ local function assemble_sliders(x,y,w,h)
 		units = {"","",""}
 		maxs = {15,15,15}
 		steps = {1,1,1}
-		r,g,b = math.floor(bars[1]),math.floor(bars[2]),math.floor(bars[3])
+		r,g,b = tonumber(bars[1]),tonumber(bars[2]),tonumber(bars[3])
 	end end
-	local hexr = toHex(r)
-	local hexg = toHex(g)
-	local hexb = toHex(b)
+	local hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
 	-- preview color
 	buf[#buf + 1] = "label[".. x + w/3 ..",".. y + h/1.5 ..";click me!]"
 	y=y+h
@@ -124,14 +121,20 @@ end
 local function Assemble_Map(x_off,y_off)
 	local buf = {}
 	buf[#buf + 1] = "label[".. x_off + 2 ..",".. y_off + 0.5 ..";click any color!]"
-	buf[#buf + 1] = "label[".. x_off + 6.6 ..",".. y_off + 0.5 ..";saturation]"
-	y_off=y_off+1
-	-- saturation slider
-	buf[#buf + 1] = "scrollbaroptions[min=0;max=10;smallstep=1;largestep=3]"
-	buf[#buf + 1] = "scrollbar[".. x_off + 7 ..",".. y_off ..";1,6.5;vertical;saturation;".. saturation .."]"
+
+	if (dropdown_index ~= "1") then
+		buf[#buf + 1] = "label[".. x_off + 6.6 ..",".. y_off + 0.5 ..";saturation]"
+		y_off=y_off+1
+		-- saturation slider
+		buf[#buf + 1] = "scrollbaroptions[min=0;max=10;smallstep=1;largestep=3]"
+		buf[#buf + 1] = "scrollbar[".. x_off + 7 ..",".. y_off ..";1,6.5;vertical;saturation;".. saturation .."]"
+	else
+		y_off=y_off+1
+	end
 	-- full map
-	for x = 0,width do
-		for y = 0,height do
+	local size = 0.1
+	for x = 0,width-1 do
+		for y = 0,height-1 do
 			-- set r,g,b using the selected mapping method
 			local r,g,b = 0,0,0;
 			if (dropdown_index == "2") then
@@ -139,14 +142,12 @@ local function Assemble_Map(x_off,y_off)
 			else if (dropdown_index == "3") then
 				r,g,b = hsl_to_rgb(x / width,1-saturation/10,(height-y) / height)
 			else
-				r,g,b = hsl_to_rgb(x / width,1-saturation/10,(height-y) / height)
+				r,g,b = math.floor(x/(width/4))+math.floor(y/(width/4))*(width/16),y%16,x%16
 			end end
 	
-			local hexr = toHex(r)
-			local hexg = toHex(g)
-			local hexb = toHex(b)
+			local hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
 			-- use hexcol mod to display the buttons as their blocks
-			buf[#buf + 1] = "item_image_button[".. (x)*size + x_off ..",".. (y)*size + y_off ..";"..size..","..size..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
+			buf[#buf + 1] = "item_image_button[".. x*size + x_off + 0.0001 ..",".. y*size + y_off + 0.0001 ..";"..size..","..size..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
 		end
 	end
 	return buf
@@ -168,12 +169,14 @@ local function assemble_colorspace()
 		"padding[0.05, 0.05]",
 		"dropdown[1,0.3;2.5,0.6;mapping_type;map,sliders;" .. mapping_type_index ..";true]" ,
 		"dropdown[4,0.3;2.5,0.6;color_space;rgb,hsv,hsl;" .. dropdown_index ..";true]" ,
+		"container[1,1]"
 	}
-	local x_off,y_off = 1,1
+	local x_off,y_off = 0,0
 	local fs2 = {}
 	if (mapping_type_index == "1") then fs2 = Assemble_Map(x_off,y_off)
 	else if (mapping_type_index == "2") then fs2 = assemble_sliders(x_off,y_off,6,1) end end
 	TableConcat(fs, fs2);
+	fs[#fs+1] = "container_end[]"
 end
 
 -- helper function
