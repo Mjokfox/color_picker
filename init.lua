@@ -227,7 +227,11 @@ function color_picker.show_formspec(player)
 				assemble_colorspace(player);
 				minetest.show_formspec(name, "color_picker:picker", table.concat(user.fs))
 				user.LastUpdate = now
-				minetest.after(mapUpdateTimeout - difftime, function () user.job_active = false end)
+				minetest.after(mapUpdateTimeout - difftime, function () 
+					if (not playermodes[player:get_player_name()]) then return end
+					user.job_active = false
+				end
+				)
 			else 
 				user.job_active = true
 				minetest.after(mapUpdateTimeout - difftime,
