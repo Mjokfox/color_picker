@@ -1,11 +1,5 @@
 local color_picker = {}
-local saturation = 0;
-local mapping_type_index = "2"
-local dropdown_index = "3"
-local bars = {"0","100","50"}
-local fs = {}
-local LastUpdate = os.time()
-local job_active = false
+local playermodes = {}
 
 local modpath = minetest.get_modpath(minetest.get_current_modname())
 dofile(modpath.."/converters.lua")
@@ -34,16 +28,19 @@ local function TableConcat(t1,t2)
     return t1
 end
 
-
 -- color sliders 
-local function assemble_sliders(x,y,w,h)
+local function assemble_sliders(player,x,y,w,h)
 	-- labels
 	local buf = {}
+	local user = playermodes[player:get_player_name()]
+	local dropdown_index = user.dropdown_index
+	local bars = user.bars
 	local r,g,b
 	local labels = {"H","S","V"}
 	local units = {"\u{00B0}","%%","%%"}
 	local maxs = {360,100,100}
 	local steps = {36,10,10}
+
 	-- set r,g,b and change labels if necessary
 	if (dropdown_index == "2") then
 		r,g,b = hsv_to_rgb(bars[1]/360,bars[2]/100,bars[3]/100)
@@ -97,8 +94,11 @@ local function assemble_sliders(x,y,w,h)
 end
 
 -- color map
-local function Assemble_Map(x_off,y_off)
+local function Assemble_Map(player,x_off,y_off)
 	local buf = {}
+	local user = playermodes[player:get_player_name()]
+	local dropdown_index = user.dropdown_index
+	local saturation = user.saturation
 	local size = 12.8/(width + height)
 	buf[#buf + 1] = "label[".. x_off + (width*size)/2 - string.len("click any color!")/15 ..",".. y_off + 0.5 ..";click any color!]"
 	local label = "saturation"
@@ -189,54 +189,57 @@ local function Assemble_Map(x_off,y_off)
 end
 
 
-local function assemble_colorspace()
+local function assemble_colorspace(player)
+	local user = playermodes[player:get_player_name()]
 	-- stuff always in formspec
-	fs = {
+	user.fs = {
 		"formspec_version[7]",
 		"size[10.7,14]",
 		"padding[0.05, 0.05]",
-		"dropdown[2,0.3;3,0.7;mapping_type;map,sliders;" .. mapping_type_index ..";true]" ,
-		"dropdown[5.5,0.3;3,0.7;color_space;rgb,hsv,hsl,Oklab;" .. dropdown_index ..";true]" ,
+		"dropdown[2,0.3;3,0.7;mapping_type;map,sliders;" .. user.mapping_type_index ..";true]" ,
+		"dropdown[5.5,0.3;3,0.7;color_space;rgb,hsv,hsl,Oklab;" .. user.dropdown_index ..";true]" ,
 		"container[1,1]"
 	}
 	local x_off,y_off = 1,0
 	local fs2 = {}
-	if (mapping_type_index == "1") then fs2 = Assemble_Map(x_off,y_off)
-	else if (mapping_type_index == "2") then fs2 = assemble_sliders(x_off,y_off,6.5,0.8) end end
-	TableConcat(fs, fs2);
-	fs[#fs+1] = "container_end[]"
-	fs[#fs+1] = "list[current_player;main;0.5,9;8,4]"
+	if (user.mapping_type_index == "1") then fs2 = Assemble_Map(player,x_off,y_off)
+	else if (user.mapping_type_index == "2") then fs2 = assemble_sliders(player,x_off,y_off,6.5,0.8) end end
+	TableConcat(user.fs, fs2);
+	user.fs[#user.fs+1] = "container_end[]"
+	user.fs[#user.fs+1] = "list[current_player;main;0.5,9;8,4]"
 end
 
 -- helper function
-function color_picker.show_formspec(user)
-	if (mapping_type_index == "1") then
+function color_picker.show_formspec(player)
+	local name = player:get_player_name()
+	local user = playermodes[name]
+	if (user.mapping_type_index == "1") then
 		local now = os.time()
-		local difftime = os.difftime(now,LastUpdate) 
-		if (not job_active) then
+		local difftime = os.difftime(now,user.LastUpdate) 
+		if (not user.job_active) then
 			if (difftime > mapUpdateTimeout) then
-				job_active = true
+				user.job_active = true
 				
-				assemble_colorspace();
-				minetest.show_formspec(user:get_player_name(), "color_picker:picker", table.concat(fs))
-				LastUpdate = now
-				minetest.after(mapUpdateTimeout - difftime, function () job_active = false end)
+				assemble_colorspace(player);
+				minetest.show_formspec(name, "color_picker:picker", table.concat(user.fs))
+				user.LastUpdate = now
+				minetest.after(mapUpdateTimeout - difftime, function () user.job_active = false end)
 			else 
-				job_active = true
+				user.job_active = true
 				minetest.after(mapUpdateTimeout - difftime,
 				function() 
-					assemble_colorspace()
-					minetest.show_formspec(user:get_player_name(), "color_picker:picker", table.concat(fs))
-					LastUpdate = os.time()
-					job_active = false
+					assemble_colorspace(player)
+					minetest.show_formspec(name, "color_picker:picker", table.concat(user.fs))
+					user.LastUpdate = os.time()
+					user.job_active = false
 				end
 				)
 			end
 		end
 	else
 		-- not map active
-		assemble_colorspace();
-		minetest.show_formspec(user:get_player_name(), "color_picker:picker", table.concat(fs))
+		assemble_colorspace(player);
+		minetest.show_formspec(name, "color_picker:picker", table.concat(user.fs))
 	end
 	
 end
@@ -245,11 +248,11 @@ end
 minetest.register_craftitem("color_picker:picker", {
 	description = "color picker",
 	inventory_image = "cspace.png",
-	on_secondary_use = function(itemstack, user, pointed_thing)
-		color_picker.show_formspec(user)
+	on_secondary_use = function(itemstack, player, pointed_thing)
+		color_picker.show_formspec(player)
 	end,
-	on_place = function(itemstack, user, pointed_thing)
-		color_picker.show_formspec(user)
+	on_place = function(itemstack, player, pointed_thing)
+		color_picker.show_formspec(player)
 	end
 })
 
@@ -269,7 +272,7 @@ end
 -- player does stuff in formspec
 minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= "color_picker:picker" then return end
-	
+	local user = playermodes[player:get_player_name()]
 	for key,value in pairs(fields) do
 		-- minetest.chat_send_all(key .. ": " .. value)
 		if (string.sub(key,1,7) == "hexcol:") then
@@ -277,7 +280,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			inv:add_item("main",key .." 99");
 		end
 		if (string.sub(key,1,3) == "bar") then
-			bars[tonumber(string.sub(key,4,4))] = value.split(value, ":")[2]
+			user.bars[tonumber(string.sub(key,4,4))] = value.split(value, ":")[2]
 			if (value.split(value, ":")[1] == "CHG") then
 				
 				color_picker.show_formspec(player)
@@ -286,25 +289,46 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		
 	end
 	if (fields.saturation) then
-		saturation = minetest.explode_scrollbar_event(fields.saturation).value
-		if (dropdown_index == "1" and tonumber(saturation) > 15) then
-			saturation = 15;
+		user.saturation = minetest.explode_scrollbar_event(fields.saturation).value
+		if (user.dropdown_index == "1" and tonumber(user.saturation) > 15) then
+			user.saturation = 15;
 		end
 		color_picker.show_formspec(player)
 	end
 	if (fields.mapping_type) then
-		mapping_type_index = fields.mapping_type
+		user.mapping_type_index = fields.mapping_type
 		color_picker.show_formspec(player)
 	end
 	if (fields.color_space) then
-		dropdown_index = fields.color_space
-		if (dropdown_index == "1") then
-			for i=1,#bars do
-				if (tonumber(bars[i]) > 15) then
-					bars[i] = "15";
+		user.dropdown_index = fields.color_space
+		if (user.dropdown_index == "1") then
+			for i=1,#user.bars do
+				if (tonumber(user.bars[i]) > 15) then
+					user.bars[i] = "15";
 				end
 			end
 		end
 		color_picker.show_formspec(player)
 	end
+end)
+
+minetest.register_on_joinplayer(function(ObjectRef, last_login)
+	local name = ObjectRef:get_player_name()
+	if (not playermodes[name]) then
+		playermodes[name] = {}
+		local user = playermodes[name]
+		user.saturation = 0;
+		user.mapping_type_index = "2"
+		user.dropdown_index = "3"
+		user.bars = {"0","100","50"}
+		user.fs = {}
+		user.LastUpdate = os.time()
+		user.job_active = false
+	end
+end)
+
+
+minetest.register_on_leaveplayer(function(ObjectRef, timed_out)
+	local name = ObjectRef:get_player_name()
+	if (playermodes[name]) then playermodes[name] = nil end
 end)
