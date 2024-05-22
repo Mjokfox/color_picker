@@ -33,6 +33,7 @@ local function assemble_sliders(player,x,y,w,h)
 	-- labels
 	local buf = {}
 	local user = playermodes[player:get_player_name()]
+	if (not user) then return buf end
 	local dropdown_index = user.dropdown_index
 	local bars = user.bars
 	local r,g,b
@@ -97,6 +98,7 @@ end
 local function Assemble_Map(player,x_off,y_off)
 	local buf = {}
 	local user = playermodes[player:get_player_name()]
+	if (not user) then return buf end
 	local dropdown_index = user.dropdown_index
 	local saturation = user.saturation
 	local size = 12.8/(width + height)
@@ -191,6 +193,7 @@ end
 
 local function assemble_colorspace(player)
 	local user = playermodes[player:get_player_name()]
+	if (not user) then return end
 	-- stuff always in formspec
 	user.fs = {
 		"formspec_version[7]",
@@ -213,6 +216,7 @@ end
 function color_picker.show_formspec(player)
 	local name = player:get_player_name()
 	local user = playermodes[name]
+	if (not user) then return end
 	if (user.mapping_type_index == "1") then
 		local now = os.time()
 		local difftime = os.difftime(now,user.LastUpdate) 
@@ -228,6 +232,7 @@ function color_picker.show_formspec(player)
 				user.job_active = true
 				minetest.after(mapUpdateTimeout - difftime,
 				function() 
+					if (not playermodes[player:get_player_name()]) then return end
 					assemble_colorspace(player)
 					minetest.show_formspec(name, "color_picker:picker", table.concat(user.fs))
 					user.LastUpdate = os.time()
@@ -273,6 +278,7 @@ end
 minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= "color_picker:picker" then return end
 	local user = playermodes[player:get_player_name()]
+	if (not user) then return end
 	for key,value in pairs(fields) do
 		-- minetest.chat_send_all(key .. ": " .. value)
 		if (string.sub(key,1,7) == "hexcol:") then
