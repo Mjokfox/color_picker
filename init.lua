@@ -73,8 +73,14 @@ local function assemble_sliders(x,y,w,h)
 
 		-- slider exact value showing
 		buf[#buf + 1] = "scroll_container[".. x + w + 0.3 ..",".. y + i*h + h*0.2 ..";1,0.6;bar" .. i .. ";vertical;1]"
-		for n = 0, maxs[i] do
-			buf[#buf + 1] = ("label[0,%s;%s".. units[i] .."]"):format(n + h*0.3, n)
+		if (dropdown_index == "1") then
+			for n = 0, maxs[i] do
+				buf[#buf + 1] = ("label[0,%s;%s".. units[i] .."]"):format(n + h*0.3, toHex(n))
+			end
+		else
+			for n = 0, maxs[i] do
+				buf[#buf + 1] = ("label[0,%s;%s".. units[i] .."]"):format(n + h*0.3, n)
+			end
 		end
 		buf[#buf + 1] = "scroll_container_end[]"
 	end
