@@ -4,6 +4,8 @@ local mapping_type_index = "2"
 local dropdown_index = "3"
 local bars = {"0","100","50"}
 local fs = {}
+local LastUpdate = os.time()
+local job_active = false
 
 local modpath = minetest.get_modpath(minetest.get_current_modname())
 dofile(modpath.."/converters.lua")
@@ -13,6 +15,13 @@ local width = minetest.settings:get("map_size")
 if (width == nil) then
 	width = 64
 	minetest.settings:set("map_size",64)
+end
+
+local mapUpdateTimeout = tonumber(minetest.settings:get("mapUpdateTimeout"))
+
+if (mapUpdateTimeout == nil) then
+	mapUpdateTimeout = 1
+	minetest.settings:set("mapUpdateTimeout",1)
 end
 
 local height = width
@@ -201,8 +210,35 @@ end
 
 -- helper function
 function color_picker.show_formspec(user)
-	assemble_colorspace();
-	minetest.show_formspec(user:get_player_name(), "color_picker:picker", table.concat(fs))
+	if (mapping_type_index == "1") then
+		local now = os.time()
+		local difftime = os.difftime(now,LastUpdate) 
+		if (not job_active) then
+			if (difftime > mapUpdateTimeout) then
+				job_active = true
+				
+				assemble_colorspace();
+				minetest.show_formspec(user:get_player_name(), "color_picker:picker", table.concat(fs))
+				LastUpdate = now
+				minetest.after(mapUpdateTimeout - difftime, function () job_active = false end)
+			else 
+				job_active = true
+				minetest.after(mapUpdateTimeout - difftime,
+				function() 
+					assemble_colorspace()
+					minetest.show_formspec(user:get_player_name(), "color_picker:picker", table.concat(fs))
+					LastUpdate = os.time()
+					job_active = false
+				end
+				)
+			end
+		end
+	else
+		-- not map active
+		assemble_colorspace();
+		minetest.show_formspec(user:get_player_name(), "color_picker:picker", table.concat(fs))
+	end
+	
 end
 
 -- register item
