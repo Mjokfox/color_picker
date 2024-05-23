@@ -283,43 +283,45 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= "color_picker:picker" then return end
 	local user = playermodes[player:get_player_name()]
 	if (not user) then return end
-	for key,value in pairs(fields) do
-		-- minetest.chat_send_all(key .. ": " .. value)
-		if (string.sub(key,1,7) == "hexcol:") then
-			local inv = player:get_inventory()
-			inv:add_item("main",key .." 99");
-		end
-		if (string.sub(key,1,3) == "bar") then
-			user.bars[tonumber(string.sub(key,4,4))] = value.split(value, ":")[2]
-			if (value.split(value, ":")[1] == "CHG") then
-				
-				color_picker.show_formspec(player)
+	pcall(function ()
+		for key,value in pairs(fields) do
+			-- minetest.chat_send_all(key .. ": " .. value)
+			if (string.sub(key,1,7) == "hexcol:") then
+				local inv = player:get_inventory()
+				inv:add_item("main",key .." 99");
 			end
-		end
-		
-	end
-	if (fields.saturation) then
-		user.saturation = minetest.explode_scrollbar_event(fields.saturation).value
-		if (user.dropdown_index == "1" and tonumber(user.saturation) > 15) then
-			user.saturation = 15;
-		end
-		color_picker.show_formspec(player)
-	end
-	if (fields.mapping_type) then
-		user.mapping_type_index = fields.mapping_type
-		color_picker.show_formspec(player)
-	end
-	if (fields.color_space) then
-		user.dropdown_index = fields.color_space
-		if (user.dropdown_index == "1") then
-			for i=1,#user.bars do
-				if (tonumber(user.bars[i]) > 15) then
-					user.bars[i] = "15";
+			if (string.sub(key,1,3) == "bar") then
+				user.bars[tonumber(string.sub(key,4,4))] = value.split(value, ":")[2]
+				if (value.split(value, ":")[1] == "CHG") then
+					
+					color_picker.show_formspec(player)
 				end
 			end
+			
 		end
-		color_picker.show_formspec(player)
-	end
+		if (fields.saturation) then
+			user.saturation = minetest.explode_scrollbar_event(fields.saturation).value
+			if (user.dropdown_index == "1" and tonumber(user.saturation) > 15) then
+				user.saturation = 15;
+			end
+			color_picker.show_formspec(player)
+		end
+		if (fields.mapping_type) then
+			user.mapping_type_index = fields.mapping_type
+			color_picker.show_formspec(player)
+		end
+		if (fields.color_space) then
+			user.dropdown_index = fields.color_space
+			if (user.dropdown_index == "1") then
+				for i=1,#user.bars do
+					if (tonumber(user.bars[i]) > 15) then
+						user.bars[i] = "15";
+					end
+				end
+			end
+			color_picker.show_formspec(player)
+		end
+	end)
 end)
 
 minetest.register_on_joinplayer(function(ObjectRef, last_login)
