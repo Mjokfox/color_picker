@@ -4,19 +4,9 @@ local playermodes = {}
 local modpath = minetest.get_modpath(minetest.get_current_modname())
 dofile(modpath.."/converters.lua")
 
-local width = minetest.settings:get("map_size")
+local width = tonumber(minetest.settings:get("color_picker_map_size")) or 64
 
-if (width == nil) then
-	width = 64
-	minetest.settings:set("map_size",64)
-end
-
-local mapUpdateTimeout = tonumber(minetest.settings:get("mapUpdateTimeout"))
-
-if (mapUpdateTimeout == nil) then
-	mapUpdateTimeout = 1
-	minetest.settings:set("mapUpdateTimeout",1)
-end
+local mapUpdateTimeout = tonumber(minetest.settings:get("color_picker_mapUpdateTimeout")) or 1
 
 local height = width
 
