@@ -222,7 +222,7 @@ function color_picker.show_formspec(player)
 					user.job_active = false
 				end
 				)
-			else 
+			else
 				user.job_active = true
 				minetest.after(mapUpdateTimeout - difftime,
 				function() 
@@ -290,26 +290,29 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			
 		end
 		if (fields.saturation) then
-			user.saturation = minetest.explode_scrollbar_event(fields.saturation).value
-			if (user.dropdown_index == "1" and tonumber(user.saturation) > 15) then
-				user.saturation = 15;
-			end
-			color_picker.show_formspec(player)
+			local temp = minetest.explode_scrollbar_event(fields.saturation)
+			if temp.type == "CHG" then
+				user.saturation = temp.value
+				if (user.dropdown_index == "1" and tonumber(user.saturation) > 15) then
+					user.saturation = 15;
+				end
+				color_picker.show_formspec(player)
+			end 
 		end
 		if (fields.mapping_type) then
-			user.mapping_type_index = fields.mapping_type
-			color_picker.show_formspec(player)
+			if (fields.mapping_type ~= user.mapping_type_index) then
+				user.mapping_type_index = fields.mapping_type
+				color_picker.show_formspec(player)
+			end
 		end
 		if (fields.color_space) then
-			user.dropdown_index = fields.color_space
-			if (user.dropdown_index == "1") then
-				for i=1,#user.bars do
-					if (tonumber(user.bars[i]) > 15) then
-						user.bars[i] = "15";
-					end
+			if (fields.color_space ~= user.dropdown_index) then
+				if (user.mapping_type_index == "2") then
+					user.bars[1],user.bars[2],user.bars[3] = convert_inverse(user.bars,user.dropdown_index,fields.color_space)
 				end
+				user.dropdown_index = fields.color_space
+				color_picker.show_formspec(player)
 			end
-			color_picker.show_formspec(player)
 		end
 	end)
 end)
