@@ -1,12 +1,12 @@
-local color_picker = {}
+local hexcol_color_picker = {}
 local playermodes = {}
 
 local modpath = minetest.get_modpath(minetest.get_current_modname())
 dofile(modpath.."/converters.lua")
 
-local width = tonumber(minetest.settings:get("color_picker_map_size")) or 64
+local width = tonumber(minetest.settings:get("hexcol_color_picker_map_size")) or 64
 
-local mapUpdateTimeout = tonumber(minetest.settings:get("color_picker_mapUpdateTimeout")) or 1
+local mapUpdateTimeout = tonumber(minetest.settings:get("hexcol_color_picker_mapUpdateTimeout")) or 1
 
 local height = width
 
@@ -203,7 +203,7 @@ local function assemble_colorspace(player)
 end
 
 -- helper function
-function color_picker.show_formspec(player)
+function hexcol_color_picker.show_formspec(player)
 	local name = player:get_player_name()
 	local user = playermodes[name]
 	if (not user) then return end
@@ -215,7 +215,7 @@ function color_picker.show_formspec(player)
 				user.job_active = true
 				
 				assemble_colorspace(player);
-				minetest.show_formspec(name, "color_picker:picker", table.concat(user.fs))
+				minetest.show_formspec(name, "hexcol_color_picker:picker", table.concat(user.fs))
 				user.LastUpdate = now
 				minetest.after(mapUpdateTimeout - difftime, function () 
 					if (not playermodes[player:get_player_name()]) then return end
@@ -228,7 +228,7 @@ function color_picker.show_formspec(player)
 				function() 
 					if (not playermodes[player:get_player_name()]) then return end
 					assemble_colorspace(player)
-					minetest.show_formspec(name, "color_picker:picker", table.concat(user.fs))
+					minetest.show_formspec(name, "hexcol_color_picker:picker", table.concat(user.fs))
 					user.LastUpdate = os.time()
 					user.job_active = false
 				end
@@ -238,31 +238,31 @@ function color_picker.show_formspec(player)
 	else
 		-- not map active
 		assemble_colorspace(player);
-		minetest.show_formspec(name, "color_picker:picker", table.concat(user.fs))
+		minetest.show_formspec(name, "hexcol_color_picker:picker", table.concat(user.fs))
 	end
 	
 end
 
 -- register item
-minetest.register_craftitem("color_picker:picker", {
+minetest.register_craftitem("hexcol_color_picker:picker", {
 	description = "color picker",
 	inventory_image = "cspace.png",
 	on_secondary_use = function(itemstack, player, pointed_thing)
-		color_picker.show_formspec(player)
+		hexcol_color_picker.show_formspec(player)
 	end,
 	on_place = function(itemstack, player, pointed_thing)
-		color_picker.show_formspec(player)
+		hexcol_color_picker.show_formspec(player)
 	end
 })
 
 -- register button in inventory
 if unified_inventory then
-	unified_inventory.register_button("color_picker:picker", {
+	unified_inventory.register_button("hexcol_color_picker:picker", {
 		type = "image",
 		image = "cspace.png",
 		tooltip = "Color Picker",
 		action = function (player)
-            color_picker.show_formspec(player)
+            hexcol_color_picker.show_formspec(player)
 		end,
 		hide_lite = false,
 	})
@@ -270,7 +270,7 @@ end
 
 -- player does stuff in formspec
 minetest.register_on_player_receive_fields(function(player, formname, fields)
-	if formname ~= "color_picker:picker" then return end
+	if formname ~= "hexcol_color_picker:picker" then return end
 	local user = playermodes[player:get_player_name()]
 	if (not user) then return end
 	pcall(function ()
@@ -284,7 +284,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				user.bars[tonumber(string.sub(key,4,4))] = value.split(value, ":")[2]
 				if (value.split(value, ":")[1] == "CHG") then
 					
-					color_picker.show_formspec(player)
+					hexcol_color_picker.show_formspec(player)
 				end
 			end
 			
@@ -296,13 +296,13 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				if (user.dropdown_index == "1" and tonumber(user.saturation) > 15) then
 					user.saturation = 15;
 				end
-				color_picker.show_formspec(player)
+				hexcol_color_picker.show_formspec(player)
 			end 
 		end
 		if (fields.mapping_type) then
 			if (fields.mapping_type ~= user.mapping_type_index) then
 				user.mapping_type_index = fields.mapping_type
-				color_picker.show_formspec(player)
+				hexcol_color_picker.show_formspec(player)
 			end
 		end
 		if (fields.color_space) then
@@ -311,7 +311,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 					user.bars[1],user.bars[2],user.bars[3] = convert_inverse(user.bars,user.dropdown_index,fields.color_space)
 				end
 				user.dropdown_index = fields.color_space
-				color_picker.show_formspec(player)
+				hexcol_color_picker.show_formspec(player)
 			end
 		end
 	end)

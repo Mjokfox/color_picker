@@ -1,3 +1,5 @@
+# This python script is used to generate the cspace.png file which is used as the item texture and button texture.
+
 from PIL import Image, ImageDraw
 import colorsys
 
@@ -23,4 +25,4 @@ for x in range(width):
 
 image.save("cspace.png")
 
-print("Image saved as cspace.png")
+print("Done")
