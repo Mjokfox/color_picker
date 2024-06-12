@@ -10,6 +10,27 @@ local mapUpdateTimeout = tonumber(minetest.settings:get("hexcol_color_picker_map
 
 local height = width
 
+local invmode = minetest.settings:get_bool("hexcol_color_picker_invmode") or false
+
+local set_formname
+if invmode then
+	set_formname = ""
+	-- Disable default creative inventory
+	local creative = rawget(_G, "creative") or rawget(_G, "creative_inventory")
+	if creative then
+		function creative.set_creative_formspec(player, start_i, pagenum)
+			return
+		end
+	end
+	-- Disable sfinv inventory
+	local sfinv = rawget(_G, "sfinv")
+	if sfinv then
+		sfinv.enabled = false
+	end
+else
+	set_formname = "hexcol_color_picker:picker"
+end
+
 -- helper function
 local function TableConcat(t1,t2)
     for i=1,#t2 do
@@ -215,7 +236,7 @@ function hexcol_color_picker.show_formspec(player)
 				user.job_active = true
 				
 				assemble_colorspace(player);
-				minetest.show_formspec(name, "hexcol_color_picker:picker", table.concat(user.fs))
+				hexcol_color_picker.send_formspec(player, table.concat(user.fs))
 				user.LastUpdate = now
 				minetest.after(mapUpdateTimeout - difftime, function () 
 					if (not playermodes[player:get_player_name()]) then return end
@@ -228,7 +249,7 @@ function hexcol_color_picker.show_formspec(player)
 				function() 
 					if (not playermodes[player:get_player_name()]) then return end
 					assemble_colorspace(player)
-					minetest.show_formspec(name, "hexcol_color_picker:picker", table.concat(user.fs))
+					hexcol_color_picker.send_formspec(player, table.concat(user.fs))
 					user.LastUpdate = os.time()
 					user.job_active = false
 				end
@@ -238,23 +259,32 @@ function hexcol_color_picker.show_formspec(player)
 	else
 		-- not map active
 		assemble_colorspace(player);
-		minetest.show_formspec(name, "hexcol_color_picker:picker", table.concat(user.fs))
+		hexcol_color_picker.send_formspec(player, table.concat(user.fs))
 	end
 	
 end
 
--- register item
-minetest.register_craftitem("hexcol_color_picker:picker", {
-	description = "color picker",
-	inventory_image = "cspace.png",
-	on_secondary_use = function(itemstack, player, pointed_thing)
-		hexcol_color_picker.show_formspec(player)
-	end,
-	on_place = function(itemstack, player, pointed_thing)
-		hexcol_color_picker.show_formspec(player)
+function hexcol_color_picker.send_formspec(player, fs)
+	if invmode then
+		player:set_inventory_formspec(fs)
+	else
+		minetest.show_formspec(player:get_player_name(), "hexcol_color_picker:picker", fs)
 	end
-})
+end
 
+-- register item
+if (minetest.settings:get_bool("hexcol_color_picker_item") ~= false) then
+	minetest.register_craftitem("hexcol_color_picker:picker", {
+		description = "color picker",
+		inventory_image = "cspace.png",
+		on_secondary_use = function(itemstack, player, pointed_thing)
+			hexcol_color_picker.show_formspec(player)
+		end,
+		on_place = function(itemstack, player, pointed_thing)
+			hexcol_color_picker.show_formspec(player)
+		end
+	})
+end
 -- register button in inventory
 if unified_inventory then
 	unified_inventory.register_button("hexcol_color_picker:picker", {
@@ -270,7 +300,7 @@ end
 
 -- player does stuff in formspec
 minetest.register_on_player_receive_fields(function(player, formname, fields)
-	if formname ~= "hexcol_color_picker:picker" then return end
+	if formname ~= set_formname then return end
 	local user = playermodes[player:get_player_name()]
 	if (not user) then return end
 	pcall(function ()
@@ -317,8 +347,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end)
 end)
 
-minetest.register_on_joinplayer(function(ObjectRef, last_login)
-	local name = ObjectRef:get_player_name()
+minetest.register_on_joinplayer(function(player, last_login)
+	local name = player:get_player_name()
 	if (not playermodes[name]) then
 		playermodes[name] = {}
 		local user = playermodes[name]
@@ -330,10 +360,14 @@ minetest.register_on_joinplayer(function(ObjectRef, last_login)
 		user.LastUpdate = os.time()
 		user.job_active = false
 	end
+	if (invmode) then
+		assemble_colorspace(player);
+		player:set_inventory_formspec(table.concat(playermodes[name].fs))
+	end
 end)
 
 
-minetest.register_on_leaveplayer(function(ObjectRef, timed_out)
-	local name = ObjectRef:get_player_name()
+minetest.register_on_leaveplayer(function(player, timed_out)
+	local name = player:get_player_name()
 	if (playermodes[name]) then playermodes[name] = nil end
 end)

@@ -12,6 +12,7 @@ Quite heavy weight color picker for [hexcol](https://gitoverit.ofafox.com/Bob/he
 
 In the top left, the mapping can be selected with the dropdown, and the top right the color space.
 The 2d map is quite heavy on resources, hence sliders is the default selected option. A "rate limiter" is added with the option to modify the minimum interval between updates for the map int he mod settings.
-The picker is added as an inventory item, but also integrated into unified inventory as a button
+The picker is added as an inventory item, with the option to disable, but also integrated into unified inventory as a button.
+It can also be set as the default inventory from the settings (not compatible with any other inventory mod).
 
 ![screenshot](https://github.com/Mjokfox/color_picker/blob/main/Screenshot.png)
