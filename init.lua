@@ -201,6 +201,18 @@ local function Assemble_Map(player,x_off,y_off)
 	return buf
 end
 
+local trash = minetest.create_detached_inventory("trash", {
+	on_put = function(inv, listname, index, stack, player)
+		inv:set_stack(listname, index, nil)
+	end,
+})
+trash:set_size("main", 1)
+
+local function draw_trash(x,y)
+    return 	"list[detached:trash;main;"..x..".1,"..y..".1;1,1;0]"..
+			"image["..x..".1,"..y..".1;1,1;cdb_clear.png]"..
+        	"tooltip["..x..".1,"..y..".1;1,1;Trash Item]"
+end
 
 local function assemble_colorspace(player)
 	local user = playermodes[player:get_player_name()]
@@ -221,6 +233,9 @@ local function assemble_colorspace(player)
 	TableConcat(user.fs, fs2);
 	user.fs[#user.fs+1] = "container_end[]"
 	user.fs[#user.fs+1] = "list[current_player;main;0.5,9;8,4]"
+	user.fs[#user.fs+1] = draw_trash(0.5,7.8)
+	user.fs[#user.fs+1] = "listring[current_player;main]"
+	user.fs[#user.fs+1] = "listring[detached:trash;main]"
 end
 
 -- helper function
