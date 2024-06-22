@@ -177,15 +177,17 @@ end
 
 local function oklab_to_lch(L, a, b)
     local C = math.sqrt(a * a + b * b)
-    local h = math.atan(b/a) * 180 / math.pi
+    local h
+    if a == 0 then h = 0;
+    else h = math.atan(b/a) * 180 / math.pi end
     if h < 0 then h = h + 360 end
     return math.floor(L*100), math.floor(C*100), math.floor(h)
 end
 
 local function rgb_to_oklab_lch(r, g, b)
     local lr, lg, lb = rgb_to_linear_srgb(r, g, b)
-    local L, a, b = linear_srgb_to_oklab(lr, lg, lb)
-    return oklab_to_lch(L, a, b)
+    local L, a, b1 = linear_srgb_to_oklab(lr, lg, lb)
+    return oklab_to_lch(L, a, b1)
 end
 
 function convert_inverse(bars,prev_dropdown_index,new_dropdown_index)

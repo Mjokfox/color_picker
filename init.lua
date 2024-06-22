@@ -12,6 +12,8 @@ local height = width
 
 local invmode = minetest.settings:get_bool("hexcol_color_picker_invmode") or false
 
+local favmode = minetest.settings:get_bool("hexcol_color_picker_favorites") ~= false
+
 local set_formname
 if invmode then
 	set_formname = ""
@@ -29,6 +31,11 @@ if invmode then
 	end
 else
 	set_formname = "hexcol_color_picker:picker"
+end
+
+local left_dropdown = "map,sliders"
+if favmode then
+	left_dropdown = left_dropdown .. ",favorites"
 end
 
 -- helper function
@@ -106,7 +113,7 @@ local function assemble_sliders(player,x,y,w,h)
 end
 
 -- color map
-local function Assemble_Map(player,x_off,y_off)
+local function assemble_map(player,x_off,y_off)
 	local buf = {}
 	local user = playermodes[player:get_player_name()]
 	if (not user) then return buf end
@@ -201,17 +208,42 @@ local function Assemble_Map(player,x_off,y_off)
 	return buf
 end
 
-local trash = minetest.create_detached_inventory("trash", {
-	on_put = function(inv, listname, index, stack, player)
-		inv:set_stack(listname, index, nil)
-	end,
-})
-trash:set_size("main", 1)
+local function assemble_favorites(player,x,y,max_width,max_height)
+	local buf = {}
+	local name = player:get_player_name()
+	local size = 1
+	local j = 0
+	local favlist = playermodes[name].favs
+	if #favlist == 0 then
+		buf[#buf + 1] = "label["..x + max_width/2 - string.len("no favorites :c")/15 ..",".. y + max_height/2 .. ";no favorites :c]"
+	else
+		for i = #favlist, 1, -1 do
+			if (j/max_width >= max_height) then
+				break
+			end
+			buf[#buf + 1] = "item_image_button[".. x + (j%max_width)*1.1*size ..",".. y + (math.floor(j/max_width))*1.1*size ..";"..size..","..size..";"..favlist[i]..";"..favlist[i]..";]"
+			j = j+1
+		end
+	end
+	return buf
+end
+
 
 local function draw_trash(x,y)
     return 	"list[detached:trash;main;"..x..".1,"..y..".1;1,1;0]"..
 			"image["..x..".1,"..y..".1;1,1;cdb_clear.png]"..
         	"tooltip["..x..".1,"..y..".1;1,1;Trash Item]"
+end
+
+local function draw_favorites(x,y)
+    return 	"list[detached:favorites;main;"..x..".1,"..y..".1;1,1;0]"..
+			"image["..x..".1,"..y..".1;1,1;server_favorite.png]"..
+        	"tooltip["..x..".1,"..y..".1;1,1;Favorite Item]"
+end
+
+local function draw_clear_favorites(x,y)
+	return "image_button["..x..","..y..";1,1;server_favorite_delete.png;clear_favs;]"..
+			"tooltip["..x..".1,"..y..".1;1,1;clear favorites]"
 end
 
 local function assemble_colorspace(player)
@@ -222,21 +254,78 @@ local function assemble_colorspace(player)
 		"formspec_version[7]",
 		"size[10.7,14]",
 		"padding[0.05, 0.05]",
-		"dropdown[2,0.3;3,0.7;mapping_type;map,sliders;" .. user.mapping_type_index ..";true]" ,
+		"dropdown[2,0.3;3,0.7;mapping_type;" .. left_dropdown .. ";" .. user.mapping_type_index ..";true]" ,
 		"dropdown[5.5,0.3;3,0.7;color_space;rgb,hsv,hsl,Oklab;" .. user.dropdown_index ..";true]" ,
 		"container[1,1]"
 	}
 	local x_off,y_off = 1,0
 	local fs2 = {}
-	if (user.mapping_type_index == "1") then fs2 = Assemble_Map(player,x_off,y_off)
-	else if (user.mapping_type_index == "2") then fs2 = assemble_sliders(player,x_off,y_off,6.5,0.8) end end
+	if (user.mapping_type_index == "1") then fs2 = assemble_map(player,x_off,y_off)
+	else if (user.mapping_type_index == "2") then fs2 = assemble_sliders(player,x_off,y_off,6.5,0.8)
+	else if (user.mapping_type_index == "3") then fs2 = assemble_favorites(player,x_off,y_off+1,6,6) end end end
 	TableConcat(user.fs, fs2);
 	user.fs[#user.fs+1] = "container_end[]"
 	user.fs[#user.fs+1] = "list[current_player;main;0.5,9;8,4]"
 	user.fs[#user.fs+1] = draw_trash(0.5,7.8)
+	if (favmode) then user.fs[#user.fs+1] = draw_favorites(0.5,6.7) end
 	user.fs[#user.fs+1] = "listring[current_player;main]"
-	user.fs[#user.fs+1] = "listring[detached:trash;main]"
+	if (user.mapping_type_index == "3") then
+		user.fs[#user.fs+1] = "listring[detached:favorites;main]"
+		user.fs[#user.fs+1] = draw_clear_favorites(0.5,5.6)
+	else
+		user.fs[#user.fs+1] = "listring[detached:trash;main]"
+	end
 end
+
+local trash = minetest.create_detached_inventory("trash", {
+	on_put = function(inv, listname, index, stack, player)
+		inv:set_stack(listname, index, nil)
+	end,
+})
+trash:set_size("main", 1)
+
+local function fav_exists(player, s)
+	local user = playermodes[player:get_player_name()]
+    for i, v in ipairs(user.favs) do
+        if v == s then
+            return true
+        end
+    end
+    return false
+end
+
+local function remove_fav(player, s)
+	local user = playermodes[player:get_player_name()]
+    for i, v in ipairs(user.favs) do
+        if v == s then
+            table.remove(user.favs, i)
+            break
+        end
+    end
+end
+
+local function clear_favs(player)
+	playermodes[player:get_player_name()].favs = {}
+	player:get_meta():set_string("hexcol_color_favorites", "")
+end
+
+
+local favorites_list = minetest.create_detached_inventory("favorites", {
+	allow_put = function(inv, listname, index, stack, player)
+		local user = playermodes[player:get_player_name()]
+		if (fav_exists(player,stack:get_name())) then
+			remove_fav(player,stack:get_name())
+		else
+			table.insert(user.favs,stack:get_name())
+		end
+		if (user.mapping_type_index == "3") then
+			hexcol_color_picker.show_formspec(player)
+		end
+		player:get_meta():set_string("hexcol_color_favorites", minetest.write_json(playermodes[player:get_player_name()].favs))
+		return 0
+	end,
+})
+favorites_list:set_size("main", 1)
 
 -- helper function
 function hexcol_color_picker.show_formspec(player)
@@ -359,6 +448,10 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				hexcol_color_picker.show_formspec(player)
 			end
 		end
+		if (fields.clear_favs) then
+			clear_favs(player)
+			hexcol_color_picker.show_formspec(player)
+		end
 	end)
 end)
 
@@ -374,6 +467,13 @@ minetest.register_on_joinplayer(function(player, last_login)
 		user.fs = {}
 		user.LastUpdate = os.time()
 		user.job_active = false
+		if (favmode) then
+			if (player:get_meta():contains("hexcol_color_favorites"))then
+				user.favs = minetest.parse_json(player:get_meta():get_string("hexcol_color_favorites")) or {}
+			else
+				user.favs = {}
+			end
+		end
 	end
 	if (invmode) then
 		assemble_colorspace(player);
@@ -381,8 +481,31 @@ minetest.register_on_joinplayer(function(player, last_login)
 	end
 end)
 
-
 minetest.register_on_leaveplayer(function(player, timed_out)
 	local name = player:get_player_name()
+	if (favmode) then player:get_meta():set_string("hexcol_color_favorites", minetest.write_json(playermodes[name].favs)) end
 	if (playermodes[name]) then playermodes[name] = nil end
 end)
+
+-- minetest.register_chatcommand("listfavs",{
+-- 	func = function (name, param)
+-- 		for key,value in pairs(playermodes[name].favs) do
+-- 			minetest.chat_send_all(value)
+-- 		end
+-- 	end
+-- })
+
+-- minetest.register_chatcommand("savefavs",{
+-- 	func = function (name, param)
+-- 		local player = minetest.get_player_by_name(name)
+-- 		player:get_meta():set_string("hexcol_color_favorites", minetest.write_json(playermodes[name].favs))
+-- 	end
+-- })
+
+-- minetest.register_chatcommand("clearfavs",{
+-- 	func = function (name, param)
+-- 		local player = minetest.get_player_by_name(name)
+-- 		playermodes[name].favs = {}
+-- 		player:get_meta():set_string("hexcol_color_favorites", "")
+-- 	end
+-- })

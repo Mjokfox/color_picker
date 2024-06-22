@@ -2,5 +2,6 @@
 hexcol_color_picker_map_size   (the color maps square dimensions)  int 64
 hexcol_color_picker_mapUpdateTimeout (the minimum time between the color map update) float 2
 hexcol_color_picker_item (add an item which can be held in the inventory) bool true
+hexcol_color_picker_favorites (add a favorites tab, the ability for players to store colors) bool true
 # Be aware that its not very compatible with other inventory mods
 hexcol_color_picker_invmode (use the color picker as the main inventory) bool false
