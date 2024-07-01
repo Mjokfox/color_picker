@@ -14,6 +14,11 @@ local invmode = minetest.settings:get_bool("hexcol_color_picker_invmode") or fal
 
 local favmode = minetest.settings:get_bool("hexcol_color_picker_favorites") ~= false
 
+local dropdown_stuff = {}
+local more_hexcols = {}
+local more_hexcol_amount = 0
+local more_hexcol_dropdown = ""
+
 local set_formname
 if invmode then
 	set_formname = ""
@@ -52,6 +57,7 @@ local function assemble_sliders(player,x,y,w,h)
 	local buf = {}
 	local user = playermodes[player:get_player_name()]
 	if (not user) then return buf end
+	local hexcol_id = more_hexcols[tonumber(user.hexcol_selected_index)]
 	local dropdown_index = user.dropdown_index
 	local bars = user.bars
 	local r,g,b
@@ -87,7 +93,7 @@ local function assemble_sliders(player,x,y,w,h)
 	else if (r==6 and g==2 and b==1) then label = temp .."3"
 	else if (r==6 and g==6 and b==6) then label = "Feeling devious today.." 
 	else if (r==7 and g==7 and b==7) then label = "Feeling lucky today.." end end end end
-	buf[#buf + 1] = "item_image_button[".. x..",".. y+h ..";"..w..","..5*h..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";"..label.."]"
+	buf[#buf + 1] = "item_image_button[".. x..",".. y+h ..";"..w..","..5*h..";hexcol:".. hexcol_id .. hexr .. hexg .. hexb ..";hexcol:".. hexcol_id .. hexr .. hexg .. hexb ..";"..label.."]"
 
 	-- generate the sliders
 	y=y+5*h
@@ -117,6 +123,7 @@ local function assemble_map(player,x_off,y_off)
 	local buf = {}
 	local user = playermodes[player:get_player_name()]
 	if (not user) then return buf end
+	local hexcol_id = more_hexcols[tonumber(user.hexcol_selected_index)]
 	local dropdown_index = user.dropdown_index
 	local saturation = user.saturation
 	local size = 12.8/(width + height)
@@ -148,7 +155,7 @@ local function assemble_map(player,x_off,y_off)
 			for x = 0,15 do
 				r,g,b = 15-saturation,y%16,x%16
 				hexr,hexg,hexb = toHex(r),toHex(g),toHex(b)
-				buf[#buf + 1] = "item_image_button[".. x*temp_size + x_off ..",".. y*temp_size + y_off ..";"..(temp_size*size_increase)..","..(temp_size*size_increase)..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
+				buf[#buf + 1] = "item_image_button[".. x*temp_size + x_off ..",".. y*temp_size + y_off ..";"..(temp_size*size_increase)..","..(temp_size*size_increase)..";hexcol:".. hexcol_id .. hexr .. hexg .. hexb ..";hexcol:".. hexcol_id .. hexr .. hexg .. hexb ..";]"
 			end
 		end
 		y_axis,x_axis = "green","blue"
@@ -167,7 +174,6 @@ local function assemble_map(player,x_off,y_off)
 					r,g,b = lch_to_rgb((height-y) / height, 1-saturation/10, 360*(x / width))
 				else
 					y_axis = "chroma"
-					-- r,g,b = math.floor(x/(width/4))+math.floor(y/(width/4))*(width/16),y%16,x%16
 					r,g,b = lch_to_rgb(1-saturation/10, (height-y) / height, 360*(x / width))
 				end end end
 				
@@ -185,19 +191,19 @@ local function assemble_map(player,x_off,y_off)
 						if temp_width == 1 then
 							old_x = x
 						end
-						buf[#buf + 1] = "item_image_button[".. old_x*size + x_off ..",".. y*size + y_off ..";"..size*(temp_width-1+size_increase)..","..(size*size_increase)..";hexcol:".. ohexr .. ohexg .. ohexb ..";hexcol:".. ohexr .. ohexg .. ohexb ..";]"
+						buf[#buf + 1] = "item_image_button[".. old_x*size + x_off ..",".. y*size + y_off ..";"..size*(temp_width-1+size_increase)..","..(size*size_increase)..";hexcol:".. hexcol_id .. ohexr .. ohexg .. ohexb ..";hexcol:".. hexcol_id .. ohexr .. ohexg .. ohexb ..";]"
 						temp_width = 1
 						old_x = x;
 					end
 					ohexr,ohexg,ohexb = hexr,hexg,hexb
 				else
-					buf[#buf + 1] = "item_image_button[".. x*size + x_off ..",".. y*size + y_off ..";"..(size*size_increase)..","..(size*size_increase)..";hexcol:".. hexr .. hexg .. hexb ..";hexcol:".. hexr .. hexg .. hexb ..";]"
+					buf[#buf + 1] = "item_image_button[".. x*size + x_off ..",".. y*size + y_off ..";"..(size*size_increase)..","..(size*size_increase)..";hexcol:".. hexcol_id .. ohexr .. ohexg .. ohexb ..";hexcol:".. hexcol_id .. ohexr .. ohexg .. ohexb ..";]"
 				end
 				
 			end
 			if (map_optimization) then
 				if (temp_width>1) then
-					buf[#buf + 1] = "item_image_button[".. old_x*size + x_off ..",".. y*size + y_off ..";"..(size)*(temp_width-2+size_increase)..","..(size*size_increase)..";hexcol:".. ohexr .. ohexg .. ohexb ..";hexcol:".. ohexr .. ohexg .. ohexb ..";]"
+					buf[#buf + 1] = "item_image_button[".. old_x*size + x_off ..",".. y*size + y_off ..";"..(size)*(temp_width-2+size_increase)..","..(size*size_increase)..";hexcol:".. hexcol_id .. ohexr .. ohexg .. ohexb ..";hexcol:".. hexcol_id .. ohexr .. ohexg .. ohexb ..";]"
 					temp_width = 1;
 				end
 			end
@@ -254,8 +260,8 @@ local function assemble_colorspace(player)
 		"formspec_version[7]",
 		"size[10.7,14]",
 		"padding[0.05, 0.05]",
-		"dropdown[2,0.3;3,0.7;mapping_type;" .. left_dropdown .. ";" .. user.mapping_type_index ..";true]" ,
-		"dropdown[5.5,0.3;3,0.7;color_space;rgb,hsv,hsl,Oklab;" .. user.dropdown_index ..";true]" ,
+		"dropdown[".. dropdown_stuff[1] ..";mapping_type;" .. left_dropdown .. ";" .. user.mapping_type_index ..";true]" ,
+		"dropdown[".. dropdown_stuff[2] ..";color_space;rgb,hsv,hsl,Oklab;" .. user.dropdown_index ..";true]" ,
 		"container[1,1]"
 	}
 	local x_off,y_off = 1,0
@@ -274,6 +280,9 @@ local function assemble_colorspace(player)
 		user.fs[#user.fs+1] = draw_clear_favorites(0.5,5.6)
 	else
 		user.fs[#user.fs+1] = "listring[detached:trash;main]"
+	end
+	if (more_hexcol_amount > 1) then
+		user.fs[#user.fs+1] = "dropdown[6.5,0.3;2,0.7;hexcol_selected;".. more_hexcol_dropdown ..";".. user.hexcol_selected_index ..";true]"
 	end
 end
 
@@ -417,11 +426,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			if (string.sub(key,1,3) == "bar") then
 				user.bars[tonumber(string.sub(key,4,4))] = value.split(value, ":")[2]
 				if (value.split(value, ":")[1] == "CHG") then
-					
 					hexcol_color_picker.show_formspec(player)
 				end
 			end
-			
 		end
 		if (fields.saturation) then
 			local temp = minetest.explode_scrollbar_event(fields.saturation)
@@ -452,7 +459,32 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			clear_favs(player)
 			hexcol_color_picker.show_formspec(player)
 		end
+		if (fields.hexcol_selected) then
+			if (fields.hexcol_selected ~= user.hexcol_selected_index) then
+				user.hexcol_selected_index = fields.hexcol_selected
+				hexcol_color_picker.show_formspec(player)
+			end
+		end
 	end)
+end)
+
+minetest.register_on_mods_loaded(function()
+	for key,value in pairs(hexcol.hexnodes) do
+		if (value == "") then value = "base" end
+		more_hexcol_amount = more_hexcol_amount + 1
+		if (more_hexcol_dropdown == "") then
+			more_hexcol_dropdown = value
+		else
+			more_hexcol_dropdown = more_hexcol_dropdown .. "," .. value
+		end
+		more_hexcols[more_hexcol_amount] = key;
+	end
+	if more_hexcol_amount < 2 then 
+		more_hexcol_dropdown = ""
+		dropdown_stuff = {"2,0.3;3,0.7","5.5,0.3;3,0.7"}
+	else
+		dropdown_stuff = {"2,0.3;2,0.7","4.25,0.3;2,0.7"}
+	end
 end)
 
 minetest.register_on_joinplayer(function(player, last_login)
@@ -467,6 +499,7 @@ minetest.register_on_joinplayer(function(player, last_login)
 		user.fs = {}
 		user.LastUpdate = os.time()
 		user.job_active = false
+		user.hexcol_selected_index = "1"
 		if (favmode) then
 			if (player:get_meta():contains("hexcol_color_favorites"))then
 				user.favs = minetest.parse_json(player:get_meta():get_string("hexcol_color_favorites")) or {}
@@ -486,26 +519,3 @@ minetest.register_on_leaveplayer(function(player, timed_out)
 	if (favmode) then player:get_meta():set_string("hexcol_color_favorites", minetest.write_json(playermodes[name].favs)) end
 	if (playermodes[name]) then playermodes[name] = nil end
 end)
-
--- minetest.register_chatcommand("listfavs",{
--- 	func = function (name, param)
--- 		for key,value in pairs(playermodes[name].favs) do
--- 			minetest.chat_send_all(value)
--- 		end
--- 	end
--- })
-
--- minetest.register_chatcommand("savefavs",{
--- 	func = function (name, param)
--- 		local player = minetest.get_player_by_name(name)
--- 		player:get_meta():set_string("hexcol_color_favorites", minetest.write_json(playermodes[name].favs))
--- 	end
--- })
-
--- minetest.register_chatcommand("clearfavs",{
--- 	func = function (name, param)
--- 		local player = minetest.get_player_by_name(name)
--- 		playermodes[name].favs = {}
--- 		player:get_meta():set_string("hexcol_color_favorites", "")
--- 	end
--- })
