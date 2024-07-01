@@ -14,7 +14,7 @@ local invmode = minetest.settings:get_bool("hexcol_color_picker_invmode") or fal
 
 local favmode = minetest.settings:get_bool("hexcol_color_picker_favorites") ~= false
 
-local dropdown_stuff = {}
+local dropdown_stuff = {"2,0.3;3,0.7","5.5,0.3;3,0.7"}
 local more_hexcols = {}
 local more_hexcol_amount = 0
 local more_hexcol_dropdown = ""
@@ -469,21 +469,22 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 end)
 
 minetest.register_on_mods_loaded(function()
-	for key,value in pairs(hexcol.hexnodes) do
-		if (value == "") then value = "base" end
-		more_hexcol_amount = more_hexcol_amount + 1
-		if (more_hexcol_dropdown == "") then
-			more_hexcol_dropdown = value
-		else
-			more_hexcol_dropdown = more_hexcol_dropdown .. "," .. value
+	if (hexcol) then
+		for key,value in pairs(hexcol.hexnodes) do
+			if (value == "") then value = "base" end
+			more_hexcol_amount = more_hexcol_amount + 1
+			if (more_hexcol_dropdown == "") then
+				more_hexcol_dropdown = value
+			else
+				more_hexcol_dropdown = more_hexcol_dropdown .. "," .. value
+			end
+			more_hexcols[more_hexcol_amount] = key;
 		end
-		more_hexcols[more_hexcol_amount] = key;
-	end
-	if more_hexcol_amount < 2 then 
-		more_hexcol_dropdown = ""
-		dropdown_stuff = {"2,0.3;3,0.7","5.5,0.3;3,0.7"}
+		if more_hexcol_amount > 1 then
+			dropdown_stuff = {"2,0.3;2,0.7","4.25,0.3;2,0.7"}
+		end
 	else
-		dropdown_stuff = {"2,0.3;2,0.7","4.25,0.3;2,0.7"}
+		more_hexcols[1] = ""
 	end
 end)
 
